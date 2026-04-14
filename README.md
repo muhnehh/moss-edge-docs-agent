@@ -1,228 +1,188 @@
-<!-- markdownlint-disable MD033 MD041 -->
+# moss-edge-docs-agent
 
-<div align="center">
+A production-style edge retrieval agent using Moss for retrieval and an ONNX reranker for local ranking and routing.
 
-<img src="assets/moss_logo_cyan.png" alt="Moss" width="80" />
+## A to Z Build Status
 
-# Moss Edge Docs Agent
+This repository now includes the full implementation path:
 
-### Sub-20ms on-device AI agent using Moss + ONNX reranking
+- corpus indexing over Moss docs
+- retrieval wrapper over Moss SDK
+- cross-encoder reranker fine-tuning
+- ONNX export + INT8 quantization
+- reranking + routing in agent loop
+- optional voice in and voice out flow
+- benchmark reporting and test coverage
+- CI quality checks and approval-gated git push flow
 
-[![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
+## What This Project Demonstrates
 
-</div>
-
----
-
-<div align="center">
-
-**Fork Notice**
-
-Forked from the official Moss repository.  
-Extended with:
-- On-device reranking (ONNX)
-- Intelligent query routing
-- End-to-end latency optimization
-
-</div>
-
----
-
-> A real-time AI agent that answers questions using Moss documentation with **sub-20ms latency** and **minimal cloud dependency**.
-
-Built as a demonstration of what’s possible when combining:
-- Moss for sub-10ms semantic retrieval  
-- ONNX-quantized cross-encoder for on-device reranking  
-- Local-first agent design for instant responses  
-
----
-
-## Why This Project Exists
-
-Modern AI agents have a hidden bottleneck:
-
-User question → vector DB → 200–800ms delay → response
-
-That delay breaks conversational flow.
-
-Moss solves retrieval latency.  
-This system focuses on optimizing the rest of the pipeline.
-
----
-
-## What This Adds on Top of Moss
-
-Moss provides fast retrieval, but real agents still require:
-
-- Determining which documents are truly relevant  
-- Deciding whether a query can be answered locally  
-- Maintaining consistently low latency  
-
-### Additions:
-
-- ONNX reranking (cross-encoder, on-device)  
-- Query routing (local vs cloud decision)  
-- End-to-end latency optimization  
-- Benchmarking with measurable results  
-
----
+- Sub-10ms retrieval path using Moss index runtime.
+- Local ONNX cross-encoder reranking for better precision.
+- Query routing that avoids unnecessary cloud calls.
+- Reproducible benchmark reporting with latency metrics.
 
 ## Architecture
 
-```
-[User Question]
-        ↓
-Moss Retrieval (<10ms)
-        ↓
-ONNX Reranker (~3ms, on-device)
-        ↓
-Routing Decision
-   ├── Local Answer (instant)
-   └── Cloud LLM (fallback)
-```
+question -> Moss retrieval -> ONNX rerank -> route
 
----
-
-## Benchmarks (M1 MacBook)
-
-| Component         | Median | P95   |
-|------------------|--------|-------|
-| Moss retrieval   | 8 ms   | 12 ms |
-| ONNX reranking   | 3 ms   | 6 ms  |
-| Total (local)    | 11 ms  | 18 ms |
-
-- ~68% of queries answered locally  
-- Majority of queries require no network call  
-
----
-
-## Tech Stack
-
-- Retrieval: Moss SDK (`inferedge-moss`)
-- Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2`
-- Inference: ONNX Runtime (INT8 quantized)
-- Agent Loop: Async Python
-- Fallback LLM: OpenAI (`gpt-4o-mini`)
-
----
+- local extractive answer path when confidence is high
+- cloud fallback path when confidence is low
 
 ## Quickstart
 
-### 1. Install dependencies
+1. Open PowerShell in the project root.
+2. Run the full bootstrap pipeline script:
+
+```powershell
+pwsh ./scripts/run_full_pipeline.ps1
+```
+
+3. If `.env` is created for the first time, add your keys and rerun the script:
+
+- `MOSS_PROJECT_ID`
+- `MOSS_PROJECT_KEY`
+- `OPENAI_API_KEY`
+
+4. Run interactive chat after setup:
+
+```powershell
+.\.venv\Scripts\python.exe -m agent.chat_agent
+```
+
+5. Optional: run full voice flow with an input audio file:
+
+```powershell
+pwsh ./scripts/run_voice_agent.ps1 -InputAudio data/sample_question.wav
+```
+
+## Manual Commands (Optional)
+
+1. Create and activate Python 3.11+ environment.
+2. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Set environment variables
+3. Copy env file and set keys:
 
 ```bash
 cp .env.example .env
 ```
 
-Add:
-
-```
-MOSS_PROJECT_ID=your_id
-MOSS_PROJECT_KEY=your_key
-OPENAI_API_KEY=your_key
-```
-
----
-
-### 3. Index documentation
+4. Build index:
 
 ```bash
-python moss_integration/moss_indexer.py
+python -m moss_integration.moss_indexer
 ```
 
----
-
-### 4. Run the agent
+5. Run chat loop:
 
 ```bash
-python agent/chat_agent.py
+python -m agent.chat_agent
 ```
 
-Example:
-
-```
-> How do I create an index in Moss?
-```
-
----
-
-### 5. Run benchmark
+6. Run benchmark:
 
 ```bash
-python metrics/benchmark.py
+python -m metrics.benchmark
 ```
 
----
+7. Run tests:
 
-## Project Structure
-
-```
-moss-edge-docs-agent/
-├── agent/
-│   └── chat_agent.py
-├── moss_integration/
-│   └── moss_indexer.py
-├── reranker/
-│   ├── inference.py
-│   ├── export_to_onnx.py
-│   └── models/
-├── metrics/
-│   └── benchmark.py
-├── data/
-│   └── corpus.json
-├── README.md
-└── requirements.txt
+```bash
+pytest
 ```
 
----
+## Reranker Training and Export
 
-## Key Idea
+Train a reranker on your own labeled pairs, then export and quantize:
 
-Retrieval is no longer the bottleneck. Decision-making is.
+```powershell
+pwsh ./scripts/train_reranker.ps1
+```
 
-When retrieval becomes near-instant, the next constraint is efficient, local reasoning.
+Or run manually:
 
----
+```bash
+python -m reranker.train_reranker --data-path data/train_pairs.sample.jsonl --output-dir reranker/models/reranker_finetuned
+python -m reranker.export_to_onnx --source-model reranker/models/reranker_finetuned
+```
 
-## Future Improvements
+Training data format uses JSONL with fields:
 
-- Voice interface (STT + TTS)  
-- Local answer synthesis using small LLMs  
-- Fine-tuned reranker for domain-specific queries  
-- Web interface (Next.js)  
+- query
+- positive or positives
+- negatives
 
----
+See sample file: data/train_pairs.sample.jsonl
 
-## Built On
+## Professional Local + GitHub Setup
 
-- Moss — real-time semantic search runtime  
-- HuggingFace Transformers + Optimum  
-- ONNX Runtime  
+If you are starting from scratch and want the same workflow used in teams:
 
----
+```powershell
+pwsh ./scripts/pro_bootstrap.ps1 -RepoUrl https://github.com/muhnehh/moss-edge-docs-agent.git -LocalPath . -Branch main
+```
 
-## Motivation
+This script will:
 
-This system explores what real-time AI agents look like when:
+- clone when directory is empty
+- initialize/connect `origin` when directory already has files
+- fetch `origin`
+- switch/create your target branch
+- set upstream when remote branch exists
 
-- Retrieval latency is negligible  
-- Models run locally  
-- Latency is treated as a primary design constraint  
+## Repository Layout
 
----
+- moss_integration: scraping and Moss SDK retrieval wrappers
+- reranker: ONNX export and runtime reranking
+- agent: interactive chat pipeline
+- metrics: benchmark harness and JSON output
+- scripts: git and developer workflow scripts
 
-## License
+Key files:
 
-BSD 2-Clause (inherits from Moss)
+- reranker/train_reranker.py: fine-tuning pipeline
+- reranker/export_to_onnx.py: ONNX + quantization pipeline
+- agent/chat_agent.py: retrieval + rerank + routing
+- agent/voice_agent.py: file-based STT -> answer -> optional TTS
+- metrics/benchmark.py: latency benchmark report generator
+- notebooks/explore_reranker.ipynb: reranker experiments in notebook format
+- notebooks/explore_reranker.py: local reranker behavior exploration script
 
----
+## CI Quality Gate
 
-<div align="center">
-  <sub>Edge AI system built on top of Moss</sub>
-</div>
+GitHub Actions workflow is included at `.github/workflows/ci.yml`.
+
+- runs on push and pull request to main
+- installs dependencies
+- validates Python syntax for all project modules
+- runs import smoke tests for core packages
+
+## Advanced Interview Angle
+
+To make this internship-grade, measure and report:
+
+- median and p95 retrieval latency
+- median and p95 reranker latency
+- local answer rate (percentage of queries resolved without cloud fallback)
+- quality checks for retrieved + reranked context
+
+## Pro Git Workflow (Approval-Gated Push)
+
+Use this script for a pro sync cycle. It can stage all files, commit, optionally pull with rebase, and push only when you approve.
+
+```powershell
+pwsh ./scripts/approve_push.ps1
+```
+
+Useful options:
+
+```powershell
+pwsh ./scripts/approve_push.ps1 -CommitMessage "feat: improve reranker routing"
+pwsh ./scripts/approve_push.ps1 -SkipPull
+```
+
+This keeps control in your hands while making shipping fast and repeatable.

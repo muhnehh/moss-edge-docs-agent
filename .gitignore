@@ -1,23 +1,35 @@
-.mypy_cache
-.ruff_cache
-.DS_Store
-__pycache__
-node_modules/
-.env
-.env.*
-!.env.template
-.env.local
-dist/
-.next/
-coverage/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
 .venv/
-env/
 venv/
+
+# Env
+.env
+
+# Build / artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
 *.log
 
-# Claude
-*.claude/
-*CLAUDE.md
+# Test cache
+.pytest_cache/
 
-*.egg-info
-.moss-cache
+# Models and benchmark outputs
+reranker/models/
+metrics/results/*.json
+!metrics/results/.gitkeep
+
+# Local data snapshots
+data/corpus.json
+data/voice/
+
+# IDE
+.vscode/
+.idea/
