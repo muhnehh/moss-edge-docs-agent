@@ -17,7 +17,19 @@ class ONNXReranker:
                 "Reranker model directory not found. Run: python -m reranker.export_to_onnx"
             )
 
-        self.model = ORTModelForSequenceClassification.from_pretrained(path)
+        model_file = None
+        if (path / "model_quantized.onnx").exists():
+            model_file = "model_quantized.onnx"
+        elif (path / "model.onnx").exists():
+            model_file = "model.onnx"
+
+        if model_file:
+            self.model = ORTModelForSequenceClassification.from_pretrained(
+                path,
+                file_name=model_file,
+            )
+        else:
+            self.model = ORTModelForSequenceClassification.from_pretrained(path)
         self.tokenizer = AutoTokenizer.from_pretrained(path)
 
     def rerank(

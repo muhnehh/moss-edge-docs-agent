@@ -103,6 +103,7 @@ def train(args: argparse.Namespace) -> None:
             use_amp=args.use_amp,
         )
 
+    model.save(str(output_dir))
     print(f"Fine-tuned model saved to: {output_dir}")
 
 

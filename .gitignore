@@ -33,3 +33,6 @@ data/voice/
 # IDE
 .vscode/
 .idea/
+
+# Training artifacts
+checkpoints/

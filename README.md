@@ -2,6 +2,87 @@
 
 A production-style edge retrieval agent using Moss for retrieval and an ONNX reranker for local ranking and routing.
 
+## Fork Disclosure: What Is Upstream vs What I Added
+
+This repository is a fork of `usemoss/moss`. The fork status is intentional, and this repo includes both upstream content and my implementation work.
+
+Upstream foundation I reused:
+
+- Moss SDK usage patterns and multi-package ecosystem examples.
+- Existing docs and release workflows from the upstream monorepo layout.
+
+What I added in this fork:
+
+- A focused edge-agent pipeline in `agent/` with retrieval, reranking, routing, and optional voice flow.
+- Moss integration layer in `moss_integration/` for indexing and retrieval wrappers.
+- Reranker training/export/inference flow in `reranker/`.
+- Benchmark and eval utilities in `metrics/`, including local latency benchmarking and baseline-vs-finetuned reranker evaluation.
+- Project-specific scripts in `scripts/` and tests in `tests/` for this agent workflow.
+
+## Measured Evidence (Apr 14, 2026)
+
+### 1) Latency Numbers (Real Run Output)
+
+I ran the local benchmark on this machine using:
+
+```bash
+python -m metrics.benchmark_local --data-path data/train_pairs.sample.jsonl --model-dir reranker/models/reranker_onnx_finetuned_quantized
+```
+
+Latest measured results:
+
+| Component | Median (ms) | P95 (ms) |
+|---|---:|---:|
+| Local retrieval (keyword baseline for offline run) | 0.11 | 0.11 |
+| ONNX rerank | 26.39 | 31.34 |
+| Total fast path | 26.48 | 31.45 |
+
+Sample terminal output from that run:
+
+```text
+How do I install the Moss SDK?                   | total=26.19ms
+How do I create an index in Moss?                | total=33.31ms
+How do I authenticate with Moss API credentials? | total=31.45ms
+Saved benchmark report to: metrics\results\benchmark_local.json
+```
+
+Note: `metrics.benchmark` (Moss-backed benchmark) requires `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY`. In this environment those credentials were not set, so the numbers above are from the local reproducible benchmark path.
+
+### 2) ONNX Reranker Fingerprint (Model + Training + Eval)
+
+Base reranker model:
+
+- `cross-encoder/ms-marco-MiniLM-L-6-v2`
+
+Fine-tune command used:
+
+```bash
+python -m reranker.train_reranker --data-path data/train_pairs.sample.jsonl --epochs 1 --batch-size 2 --eval-ratio 0.4 --output-dir reranker/models/reranker_finetuned
+```
+
+Export + quantize command used:
+
+```bash
+python -m reranker.export_to_onnx --source-model reranker/models/reranker_finetuned --raw-dir reranker/models/reranker_onnx_finetuned --quant-dir reranker/models/reranker_onnx_finetuned_quantized
+```
+
+Baseline vs fine-tuned evaluation command:
+
+```bash
+python -m metrics.reranker_eval --data-path data/train_pairs.sample.jsonl --baseline-model cross-encoder/ms-marco-MiniLM-L-6-v2 --candidate-model reranker/models/reranker_finetuned --output metrics/results/reranker_eval.json
+```
+
+Evaluation summary (same sample dataset):
+
+| Metric | Baseline | Fine-tuned | Delta |
+|---|---:|---:|---:|
+| Top-1 accuracy | 0.80 | 0.80 | +0.00 |
+| Avg margin (positive vs hardest negative) | 5.1974 | 5.3669 | +0.1695 |
+| Avg latency per query (ms) | 19.10 | 16.49 | -2.61 |
+| P95 latency per query (ms) | 19.66 | 15.45 | -4.21 |
+
+Interpretation: on this tiny sample set, accuracy is unchanged, while ranking margin and latency improved. This is honest early evidence, not a final quality claim.
+
 ## A to Z Build Status
 
 This repository now includes the full implementation path:
@@ -17,10 +98,10 @@ This repository now includes the full implementation path:
 
 ## What This Project Demonstrates
 
-- Sub-10ms retrieval path using Moss index runtime.
-- Local ONNX cross-encoder reranking for better precision.
+- Local ONNX cross-encoder reranking for better precision and low-latency ranking.
 - Query routing that avoids unnecessary cloud calls.
-- Reproducible benchmark reporting with latency metrics.
+- Reproducible benchmark reporting with latency metrics and raw JSON outputs.
+- Transparent reporting of measured numbers, including when results are above target.
 
 ## Architecture
 
@@ -89,7 +170,19 @@ python -m agent.chat_agent
 python -m metrics.benchmark
 ```
 
-7. Run tests:
+7. Run local benchmark (no Moss credentials required):
+
+```bash
+python -m metrics.benchmark_local --data-path data/train_pairs.sample.jsonl --model-dir reranker/models/reranker_onnx_finetuned_quantized
+```
+
+8. Compare baseline vs fine-tuned reranker:
+
+```bash
+python -m metrics.reranker_eval --data-path data/train_pairs.sample.jsonl --baseline-model cross-encoder/ms-marco-MiniLM-L-6-v2 --candidate-model reranker/models/reranker_finetuned --output metrics/results/reranker_eval.json
+```
+
+9. Run tests:
 
 ```bash
 pytest
