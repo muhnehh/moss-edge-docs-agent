@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="assets/moss-logo.png" alt="Moss" width="80" />
+<img src="assets/moss_logo_cyan.png" alt="Moss" width="80" />
 
 # Moss Edge Docs Agent
 
