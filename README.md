@@ -14,6 +14,20 @@
 
 ---
 
+<div align="center">
+
+**Fork Notice**
+
+Forked from the official Moss repository.  
+Extended with:
+- On-device reranking (ONNX)
+- Intelligent query routing
+- End-to-end latency optimization
+
+</div>
+
+---
+
 > A real-time AI agent that answers questions using Moss documentation with **sub-20ms latency** and **minimal cloud dependency**.
 
 Built as a demonstration of what’s possible when combining:
