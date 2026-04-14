@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -10,12 +11,26 @@ from transformers import AutoTokenizer
 
 
 class ONNXReranker:
-    def __init__(self, model_dir: str = "reranker/models/reranker_onnx_quantized") -> None:
-        path = Path(model_dir)
+    def __init__(
+        self,
+        model_dir: str | None = None,
+        max_input_chars: int | None = None,
+        max_length: int | None = None,
+    ) -> None:
+        path = self._resolve_model_dir(model_dir)
         if not path.exists():
             raise RuntimeError(
                 "Reranker model directory not found. Run: python -m reranker.export_to_onnx"
             )
+
+        self.max_input_chars = (
+            int(os.getenv("RERANK_INPUT_MAX_CHARS", "160"))
+            if max_input_chars is None
+            else max_input_chars
+        )
+        self.max_length = (
+            int(os.getenv("RERANK_MAX_LENGTH", "192")) if max_length is None else max_length
+        )
 
         model_file = None
         if (path / "model_quantized.onnx").exists():
@@ -32,20 +47,45 @@ class ONNXReranker:
             self.model = ORTModelForSequenceClassification.from_pretrained(path)
         self.tokenizer = AutoTokenizer.from_pretrained(path)
 
+    @staticmethod
+    def _resolve_model_dir(model_dir: str | None) -> Path:
+        env_dir = os.getenv("RERANK_MODEL_DIR")
+        if model_dir:
+            return Path(model_dir)
+        if env_dir:
+            return Path(env_dir)
+
+        candidates = [
+            Path("reranker/models/reranker_onnx_finetuned_quantized"),
+            Path("reranker/models/reranker_onnx_quantized"),
+            Path("reranker/models/reranker_onnx_finetuned"),
+            Path("reranker/models/reranker_onnx"),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return candidates[0]
+
     def rerank(
         self, query: str, docs: list[dict[str, Any]], top_k: int = 3
     ) -> tuple[list[dict[str, Any]], float]:
         if not docs:
             return [], 0.0
 
-        pairs = [(query, (doc.get("text") or "").strip()) for doc in docs]
+        pairs: list[tuple[str, str]] = []
+        for doc in docs:
+            text = (doc.get("text") or "").strip()
+            if self.max_input_chars > 0:
+                text = text[: self.max_input_chars]
+            pairs.append((query, text))
+
         t0 = time.perf_counter()
 
         inputs = self.tokenizer(
             pairs,
             padding=True,
             truncation=True,
-            max_length=512,
+            max_length=self.max_length,
             return_tensors="pt",
         )
 

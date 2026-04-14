@@ -1,6 +1,6 @@
 # moss-edge-docs-agent
 
-A production-style edge retrieval agent using Moss for retrieval and an ONNX reranker for local ranking and routing.
+A production-style edge retrieval agent with sub-10ms semantic retrieval via Moss and an ~21ms end-to-end fast path using local ONNX reranking.
 
 ## Fork Disclosure
 
@@ -21,6 +21,14 @@ What I added in this fork:
 - Benchmark and eval utilities in `metrics/`, including local latency benchmarking and baseline-vs-finetuned reranker evaluation.
 - Project-specific scripts in `scripts/` and tests in `tests/` for this agent workflow.
 
+## Performance Positioning (Measured)
+
+- Lead claim: sub-10ms semantic retrieval via Moss, with an ~21ms end-to-end fast path using local ONNX reranking.
+- Verified Moss retrieval (`metrics/results/benchmark.json`): 5.58 ms median, 6.47 ms p95.
+- Verified ONNX rerank (`metrics/results/benchmark.json`): 15.75 ms median, 17.90 ms p95.
+- Current end-to-end fast path on this machine (retrieval + ONNX rerank): 21.47 ms median, 23.96 ms p95.
+- This README does not claim end-to-end <20 ms from the current benchmark data.
+
 ## How to Get Moss Credentials and Run the Real Benchmark
 
 1. In the Moss dashboard, open API Keys for your project.
@@ -40,7 +48,7 @@ Security notes:
 - Never commit `.env`.
 - If you accidentally exposed a key, rotate it in the Moss dashboard immediately.
 
-## Measured Evidence (Apr 14, 2026)
+## Measured Evidence (Apr 15, 2026)
 
 ### 1) Latency Numbers (Real Moss-Backed Run Output)
 
@@ -54,21 +62,25 @@ Latest measured results from `metrics/results/benchmark.json`:
 
 | Component | Median (ms) | P95 (ms) |
 |---|---:|---:|
-| Moss retrieval | 5.17 | 5.79 |
-| ONNX rerank | 177.40 | 246.43 |
-| Total fast path | 182.32 | 277.30 |
+| Moss retrieval | 5.58 | 6.47 |
+| ONNX rerank | 15.75 | 17.90 |
+| Total fast path | 21.47 | 23.96 |
+
+Pitch framing for these measurements: sub-10ms semantic retrieval via Moss, with local ONNX reranking.
+
+Latency-tuned defaults used for this benchmark run: `MOSS_RETRIEVE_TOP_K=3`, `RERANK_TOP_K=3`, `RERANK_INPUT_MAX_CHARS=160`, `RERANK_MAX_LENGTH=192`.
 
 Sample terminal output from that run:
 
 ```text
-How do I install the Moss SDK?                   | total=3017.7ms | path=local
-What is the difference between moss-minilm and m | total=92.3ms   | path=local
-How do I create an index in Moss?                | total=137.5ms  | path=local
+How do I install the Moss SDK?                   | total=2829.2ms | path=local
+What is the difference between moss-minilm and m | total=23.4ms   | path=local
+How do I create an index in Moss?                | total=22.3ms   | path=local
 ...
 Saved benchmark report to: metrics\results\benchmark.json
 ```
 
-Cold-start note: the first query includes index/model warm-up and is much slower (~3.0s). Median and P95 values above are the reported aggregate metrics across all 10 benchmark questions.
+Cold-start note: the first query includes index/model warm-up and is much slower (~2.8s). Median and P95 values above are the reported aggregate metrics across all 10 benchmark questions.
 
 Supplemental local-offline benchmark (no Moss network call) is also available in `metrics/results/benchmark_local.json`.
 
@@ -107,6 +119,8 @@ Evaluation summary (same sample dataset):
 
 Interpretation: on this tiny sample set, accuracy is unchanged, while ranking margin and latency improved. This is honest early evidence, not a final quality claim.
 
+Note: the reranker-eval latency table above is model-scoring latency on the sample pairs, not full end-to-end retrieval + rerank benchmark latency.
+
 Full reranker details are documented in `reranker/MODEL_CARD.md`.
 
 ## A to Z Build Status
@@ -124,7 +138,7 @@ This repository now includes the full implementation path:
 
 ## What This Project Demonstrates
 
-- Local ONNX cross-encoder reranking for better precision and low-latency ranking.
+- Local ONNX cross-encoder reranking for better precision, with measured latency reported transparently.
 - Query routing that avoids unnecessary cloud calls.
 - Reproducible benchmark reporting with latency metrics and raw JSON outputs.
 - Transparent reporting of measured numbers, including when results are above target.

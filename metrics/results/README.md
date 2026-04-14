@@ -13,19 +13,22 @@ Commands:
 
 Latest local benchmark snapshot (2026-04-14):
 
-- retrieval median: 0.11 ms
-- rerank median: 26.39 ms
-- total median: 26.48 ms
+- retrieval median: 0.13 ms
+- retrieval p95: 0.16 ms
+- rerank median: 28.74 ms
+- rerank p95: 35.64 ms
+- total median: 28.88 ms
+- total p95: 35.80 ms
 
 Latest Moss-backed benchmark snapshot (2026-04-14):
 
-- retrieval median: 5.17 ms
-- retrieval p95: 5.79 ms
-- rerank median: 177.40 ms
-- rerank p95: 246.43 ms
-- total median: 182.32 ms
-- total p95: 277.30 ms
-- note: first-query cold start observed around 3.0s
+- retrieval median: 5.58 ms
+- retrieval p95: 6.47 ms
+- rerank median: 15.75 ms
+- rerank p95: 17.90 ms
+- total median: 21.47 ms
+- total p95: 23.96 ms
+- note: first-query cold start observed around 2.8s
 
 Latest reranker eval snapshot (2026-04-14):
 

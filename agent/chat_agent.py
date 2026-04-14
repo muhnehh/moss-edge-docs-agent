@@ -14,20 +14,34 @@ load_dotenv()
 
 class MossEdgeAgent:
     def __init__(self) -> None:
-        self.retriever = MossRetriever()
+        self.retrieve_top_k = self._read_int_env("MOSS_RETRIEVE_TOP_K", default=3, minimum=1)
+        self.rerank_top_k = self._read_int_env("RERANK_TOP_K", default=3, minimum=1)
+
+        self.retriever = MossRetriever(top_k=self.retrieve_top_k)
         self.reranker = ONNXReranker()
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.openai = AsyncOpenAI(api_key=self.openai_api_key) if self.openai_api_key else None
         self.rerank_threshold = float(os.getenv("RERANK_THRESHOLD", "0.3"))
 
+    @staticmethod
+    def _read_int_env(name: str, default: int, minimum: int = 1) -> int:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        try:
+            value = int(raw)
+        except ValueError:
+            return default
+        return max(minimum, value)
+
     async def answer(self, question: str) -> dict[str, Any]:
         timings: dict[str, float | str] = {}
 
         t_retrieve = time.perf_counter()
-        candidates = await self.retriever.retrieve(question, top_k=8)
+        candidates = await self.retriever.retrieve(question)
         timings["moss_retrieval_ms"] = (time.perf_counter() - t_retrieve) * 1000
 
-        top_docs, rerank_ms = self.reranker.rerank(question, candidates, top_k=3)
+        top_docs, rerank_ms = self.reranker.rerank(question, candidates, top_k=self.rerank_top_k)
         timings["rerank_ms"] = rerank_ms
 
         top_score = top_docs[0].get("rerank_score", 0.0) if top_docs else 0.0
