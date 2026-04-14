@@ -2,7 +2,7 @@
 
 A production-style edge retrieval agent using Moss for retrieval and an ONNX reranker for local ranking and routing.
 
-## Fork Disclosure: What Is Upstream vs What I Added
+## Fork Disclosure
 
 This repository is a fork of `usemoss/moss`. The fork status is intentional, and this repo includes both upstream content and my implementation work.
 
@@ -10,6 +10,8 @@ Upstream foundation I reused:
 
 - Moss SDK usage patterns and multi-package ecosystem examples.
 - Existing docs and release workflows from the upstream monorepo layout.
+
+## What I Built on Top of Moss
 
 What I added in this fork:
 
@@ -19,34 +21,56 @@ What I added in this fork:
 - Benchmark and eval utilities in `metrics/`, including local latency benchmarking and baseline-vs-finetuned reranker evaluation.
 - Project-specific scripts in `scripts/` and tests in `tests/` for this agent workflow.
 
+## How to Get Moss Credentials and Run the Real Benchmark
+
+1. In the Moss dashboard, open API Keys for your project.
+2. Copy the environment-variable snippet from the Environment Variables box.
+3. Create a local `.env` in the repo root and paste values for:
+	- `MOSS_PROJECT_ID`
+	- `MOSS_PROJECT_KEY`
+	- `OPENAI_API_KEY` (needed for cloud fallback and voice path)
+4. Ensure your project has an index (dashboard currently shows `0 / 3 indexes` in your screenshot), then run:
+	- `python -m moss_integration.moss_indexer`
+5. Run the Moss-backed benchmark:
+	- `python -m metrics.benchmark`
+6. Use the generated JSON at `metrics/results/benchmark.json` and paste the measured table into this README.
+
+Security notes:
+
+- Never commit `.env`.
+- If you accidentally exposed a key, rotate it in the Moss dashboard immediately.
+
 ## Measured Evidence (Apr 14, 2026)
 
-### 1) Latency Numbers (Real Run Output)
+### 1) Latency Numbers (Real Moss-Backed Run Output)
 
-I ran the local benchmark on this machine using:
+I ran the Moss-backed benchmark on this machine after indexing docs with valid Moss credentials. To keep the run local-only (and avoid cloud fallback noise), I forced local routing for benchmark execution:
 
-```bash
-python -m metrics.benchmark_local --data-path data/train_pairs.sample.jsonl --model-dir reranker/models/reranker_onnx_finetuned_quantized
+```powershell
+$env:RERANK_THRESHOLD='-999'; python -m metrics.benchmark
 ```
 
-Latest measured results:
+Latest measured results from `metrics/results/benchmark.json`:
 
 | Component | Median (ms) | P95 (ms) |
 |---|---:|---:|
-| Local retrieval (keyword baseline for offline run) | 0.11 | 0.11 |
-| ONNX rerank | 26.39 | 31.34 |
-| Total fast path | 26.48 | 31.45 |
+| Moss retrieval | 5.17 | 5.79 |
+| ONNX rerank | 177.40 | 246.43 |
+| Total fast path | 182.32 | 277.30 |
 
 Sample terminal output from that run:
 
 ```text
-How do I install the Moss SDK?                   | total=26.19ms
-How do I create an index in Moss?                | total=33.31ms
-How do I authenticate with Moss API credentials? | total=31.45ms
-Saved benchmark report to: metrics\results\benchmark_local.json
+How do I install the Moss SDK?                   | total=3017.7ms | path=local
+What is the difference between moss-minilm and m | total=92.3ms   | path=local
+How do I create an index in Moss?                | total=137.5ms  | path=local
+...
+Saved benchmark report to: metrics\results\benchmark.json
 ```
 
-Note: `metrics.benchmark` (Moss-backed benchmark) requires `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY`. In this environment those credentials were not set, so the numbers above are from the local reproducible benchmark path.
+Cold-start note: the first query includes index/model warm-up and is much slower (~3.0s). Median and P95 values above are the reported aggregate metrics across all 10 benchmark questions.
+
+Supplemental local-offline benchmark (no Moss network call) is also available in `metrics/results/benchmark_local.json`.
 
 ### 2) ONNX Reranker Fingerprint (Model + Training + Eval)
 
@@ -82,6 +106,8 @@ Evaluation summary (same sample dataset):
 | P95 latency per query (ms) | 19.66 | 15.45 | -4.21 |
 
 Interpretation: on this tiny sample set, accuracy is unchanged, while ranking margin and latency improved. This is honest early evidence, not a final quality claim.
+
+Full reranker details are documented in `reranker/MODEL_CARD.md`.
 
 ## A to Z Build Status
 

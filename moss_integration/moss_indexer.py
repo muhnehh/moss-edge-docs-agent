@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from inferedge_moss import MossClient
+from inferedge_moss import DocumentInfo, MossClient
 
 load_dotenv()
 
@@ -65,7 +65,7 @@ async def scrape_page(url: str, cfg: ChunkConfig) -> list[dict[str, Any]]:
         {
             "id": f"{url.rstrip('/').split('/')[-1]}-{i}",
             "text": chunk,
-            "metadata": {"source_url": url, "chunk_index": i},
+            "metadata": {"source_url": url, "chunk_index": str(i)},
         }
         for i, chunk in enumerate(chunks)
     ]
@@ -89,8 +89,13 @@ async def build_index() -> None:
         all_docs.extend(docs)
         print(f"Scraped {len(docs)} chunks from {url}")
 
+    moss_docs = [
+        DocumentInfo(doc["id"], doc["text"], doc.get("metadata"))
+        for doc in all_docs
+    ]
+
     print(f"Total chunks: {len(all_docs)}")
-    await client.createIndex(index_name, all_docs, {"modelId": "moss-minilm"})
+    await client.create_index(index_name, moss_docs, model_id="moss-minilm")
     print(f"Index created: {index_name}")
 
     out = Path("data") / "corpus.json"

@@ -2,7 +2,7 @@ import os
 from typing import Any
 
 from dotenv import load_dotenv
-from inferedge_moss import MossClient
+from inferedge_moss import MossClient, QueryOptions
 
 load_dotenv()
 
@@ -22,7 +22,7 @@ class MossRetriever:
     async def ensure_loaded(self) -> None:
         if self._loaded:
             return
-        await self.client.loadIndex(self.index_name)
+        await self.client.load_index(self.index_name)
         self._loaded = True
 
     async def retrieve(self, query: str, top_k: int | None = None) -> list[dict[str, Any]]:
@@ -30,11 +30,26 @@ class MossRetriever:
         response = await self.client.query(
             self.index_name,
             query,
-            {"topK": top_k or self.top_k},
+            QueryOptions(top_k=top_k or self.top_k),
         )
 
         docs = getattr(response, "docs", None)
         if docs is None and isinstance(response, dict):
             docs = response.get("docs", [])
 
-        return docs or []
+        normalized: list[dict[str, Any]] = []
+        for doc in docs or []:
+            if isinstance(doc, dict):
+                normalized.append(doc)
+                continue
+
+            normalized.append(
+                {
+                    "id": getattr(doc, "id", "unknown"),
+                    "text": getattr(doc, "text", ""),
+                    "metadata": getattr(doc, "metadata", None),
+                    "score": getattr(doc, "score", None),
+                }
+            )
+
+        return normalized

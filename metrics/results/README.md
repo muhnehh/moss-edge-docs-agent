@@ -17,6 +17,16 @@ Latest local benchmark snapshot (2026-04-14):
 - rerank median: 26.39 ms
 - total median: 26.48 ms
 
+Latest Moss-backed benchmark snapshot (2026-04-14):
+
+- retrieval median: 5.17 ms
+- retrieval p95: 5.79 ms
+- rerank median: 177.40 ms
+- rerank p95: 246.43 ms
+- total median: 182.32 ms
+- total p95: 277.30 ms
+- note: first-query cold start observed around 3.0s
+
 Latest reranker eval snapshot (2026-04-14):
 
 - baseline top1 accuracy: 0.80
