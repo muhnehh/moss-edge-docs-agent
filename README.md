@@ -14,124 +14,141 @@
 
 ---
 
-> A real-time AI agent that answers questions using Moss's own documentation — with **sub-20ms latency** and **no cloud dependency for most queries**.
+> A real-time AI agent that answers questions using Moss documentation with **sub-20ms latency** and **minimal cloud dependency**.
 
-Built as a demonstration of what’s possible when you combine:
-- **Moss** for sub-10ms semantic retrieval  
-- **ONNX-quantized cross-encoder** for on-device reranking  
-- **Local-first agent design** for instant responses  
+Built as a demonstration of what’s possible when combining:
+- Moss for sub-10ms semantic retrieval  
+- ONNX-quantized cross-encoder for on-device reranking  
+- Local-first agent design for instant responses  
 
 ---
 
-## 🚀 Why This Project Exists
+## Why This Project Exists
 
 Modern AI agents have a hidden bottleneck:
 
 User question → vector DB → 200–800ms delay → response
 
-That delay breaks conversation.
+That delay breaks conversational flow.
 
-**Moss solves retrieval latency.**  
-This project solves the *rest of the pipeline*.
-
----
-
-## ⚡ What This Adds on Top of Moss
-
-Moss gives you fast retrieval — but real agents still need:
-
-- Which documents are actually relevant?
-- Can we answer locally without calling a cloud LLM?
-- How do we keep responses instant?
-
-### This project introduces:
-
-✅ ONNX reranking (cross-encoder, on-device)  
-✅ Query routing (local vs cloud decision)  
-✅ End-to-end latency optimization  
-✅ Benchmarking with real numbers  
+Moss solves retrieval latency.  
+This system focuses on optimizing the rest of the pipeline.
 
 ---
 
-## 🧠 Architecture
+## What This Adds on Top of Moss
 
+Moss provides fast retrieval, but real agents still require:
+
+- Determining which documents are truly relevant  
+- Deciding whether a query can be answered locally  
+- Maintaining consistently low latency  
+
+### Additions:
+
+- ONNX reranking (cross-encoder, on-device)  
+- Query routing (local vs cloud decision)  
+- End-to-end latency optimization  
+- Benchmarking with measurable results  
+
+---
+
+## Architecture
+
+```
 [User Question]
-↓
+        ↓
 Moss Retrieval (<10ms)
-↓
+        ↓
 ONNX Reranker (~3ms, on-device)
-↓
+        ↓
 Routing Decision
-├── Local Answer (instant)
-└── Cloud LLM (fallback)
+   ├── Local Answer (instant)
+   └── Cloud LLM (fallback)
+```
 
 ---
 
-## 📊 Benchmarks (M1 MacBook)
+## Benchmarks (M1 MacBook)
 
 | Component         | Median | P95   |
-|-------------------|--------|-------|
-| Moss retrieval    | 8 ms   | 12 ms |
-| ONNX reranking    | 3 ms   | 6 ms  |
-| **Total (local)** | **11 ms** | **18 ms** |
+|------------------|--------|-------|
+| Moss retrieval   | 8 ms   | 12 ms |
+| ONNX reranking   | 3 ms   | 6 ms  |
+| Total (local)    | 11 ms  | 18 ms |
 
-✅ ~68% of queries answered locally  
-✅ No network call needed for majority of questions  
-
----
-
-## 🛠️ Tech Stack
-
-- **Retrieval:** Moss SDK (`inferedge-moss`)
-- **Reranker:** `cross-encoder/ms-marco-MiniLM-L-6-v2`
-- **Inference:** ONNX Runtime (INT8 quantized)
-- **Agent Loop:** Async Python
-- **Fallback LLM:** OpenAI (`gpt-4o-mini`)
+- ~68% of queries answered locally  
+- Majority of queries require no network call  
 
 ---
 
-## ⚡ Quickstart
+## Tech Stack
+
+- Retrieval: Moss SDK (`inferedge-moss`)
+- Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2`
+- Inference: ONNX Runtime (INT8 quantized)
+- Agent Loop: Async Python
+- Fallback LLM: OpenAI (`gpt-4o-mini`)
+
+---
+
+## Quickstart
 
 ### 1. Install dependencies
 
+```bash
 pip install -r requirements.txt
+```
 
 ### 2. Set environment variables
 
+```bash
 cp .env.example .env
+```
 
 Add:
 
+```
 MOSS_PROJECT_ID=your_id
 MOSS_PROJECT_KEY=your_key
 OPENAI_API_KEY=your_key
+```
 
 ---
 
-### 3. Index Moss docs
+### 3. Index documentation
 
+```bash
 python moss_integration/moss_indexer.py
+```
 
 ---
 
 ### 4. Run the agent
 
+```bash
 python agent/chat_agent.py
+```
 
-Ask:
+Example:
 
+```
 > How do I create an index in Moss?
+```
 
 ---
 
 ### 5. Run benchmark
 
+```bash
 python metrics/benchmark.py
+```
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
+```
 moss-edge-docs-agent/
 ├── agent/
 │   └── chat_agent.py
@@ -147,52 +164,51 @@ moss-edge-docs-agent/
 │   └── corpus.json
 ├── README.md
 └── requirements.txt
+```
 
 ---
 
-## 🔬 Key Idea
+## Key Idea
 
-**Retrieval is no longer the bottleneck. Decision-making is.**
+Retrieval is no longer the bottleneck. Decision-making is.
 
-This project demonstrates:
-
-> When retrieval becomes instant, the next frontier is *on-device reasoning*.
+When retrieval becomes near-instant, the next constraint is efficient, local reasoning.
 
 ---
 
-## 🧪 Future Improvements
+## Future Improvements
 
-* Voice interface (STT + TTS)
-* Better local answer synthesis (small LLM)
-* Fine-tuned reranker on Moss-specific queries
-* Web demo (Next.js)
-
----
-
-## 🙌 Built On
-
-* Moss — real-time semantic search runtime
-* HuggingFace Transformers + Optimum
-* ONNX Runtime
+- Voice interface (STT + TTS)  
+- Local answer synthesis using small LLMs  
+- Fine-tuned reranker for domain-specific queries  
+- Web interface (Next.js)  
 
 ---
 
-## 📬 Why I Built This
+## Built On
 
-I built this to explore what **true real-time AI agents** look like when:
-
-* Retrieval is no longer the bottleneck
-* Models run locally
-* Latency is treated as a first-class constraint
+- Moss — real-time semantic search runtime  
+- HuggingFace Transformers + Optimum  
+- ONNX Runtime  
 
 ---
 
-## 📝 License
+## Motivation
+
+This system explores what real-time AI agents look like when:
+
+- Retrieval latency is negligible  
+- Models run locally  
+- Latency is treated as a primary design constraint  
+
+---
+
+## License
 
 BSD 2-Clause (inherits from Moss)
 
 ---
 
 <div align="center">
-  <sub>Built as an edge-AI experiment on top of Moss</sub>
+  <sub>Edge AI system built on top of Moss</sub>
 </div>
